@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: graph-paper sheet with the board on the left, score/controls column on the right; stacks on phones. Focus mode pins the board full-screen. */
+:root {
+  --paper: #f2f3ee;
+  --sheet: #fbfbf7;
+  --grid: #e0e3dc;
+  --ink: #232726;
+  --ink-soft: #6a706d;
+  --dash: #3f9a5c;
+  --tile-white: #fdfdfa;
+  --tile-black: #1d1f1f;
+  --tile-black-num: #f6f6f0;
+  --tile-white-num: #232726;
+  --you: #2f5fb3;
+  --you-tint: #d9e3f5;
+  --ai: #c0532b;
+  --ai-tint: #f5ddd2;
+  --pending: #d3a21a;
+  --line: #d2d6cf;
+  --font-hand: "Klee One", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #191c1b; --sheet: #212524; --grid: #2b302e; --ink: #e9ece7; --ink-soft: #9aa29e; --dash: #5cc07d;
+  --tile-white: #e9e9e2; --tile-black: #0b0c0c; --tile-black-num: #f2f2ea;
+  --you: #82a9f0; --you-tint: #c9d8f3; --ai: #f08c64; --ai-tint: #f3d5c8; --pending: #e8b93a; --line: #3a403e; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --paper: #191c1b; --sheet: #212524; --grid: #2b302e; --ink: #e9ece7; --ink-soft: #9aa29e; --dash: #5cc07d;
+  --tile-white: #e9e9e2; --tile-black: #0b0c0c; --tile-black-num: #f2f2ea;
+  --you: #82a9f0; --you-tint: #c9d8f3; --ai: #f08c64; --ai-tint: #f3d5c8; --pending: #e8b93a; --line: #3a403e; color-scheme: dark; }
+
+html, body { min-height: 100%; }
+body { background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6; padding: 24px 16px 40px; }
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 28px; align-items: start; }
+@media (max-width: 780px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 18px; } }
+
+header { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.logo { width: 52px; height: 52px; background: #111; color: #fafaf5; display: grid; place-items: center; font-family: var(--font-hand); font-weight: 600; font-size: 40px; line-height: 1; border-radius: 6px; flex: none; }
+header .t { display: flex; flex-direction: column; min-width: 0; }
+header .t { flex: 1; }
+.modes { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 8px; overflow: hidden; flex: none; }
+.modes button { border: none; border-radius: 0; padding: 8px 14px; font-weight: 500; background: var(--sheet); color: var(--ink); }
+.modes button + button { border-left: 1.5px solid var(--ink); }
+.modes button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); font-weight: 700; }
+h1 { font-family: var(--font-body); font-weight: 900; font-size: 20px; margin: 0; letter-spacing: .04em; }
+.sub { color: var(--ink-soft); font-size: 13px; margin: 0; }
+
+.sheet { position: relative; background: var(--sheet);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 22px 22px; border: 1px solid var(--line); border-radius: 6px; padding: clamp(10px, 3vw, 26px); min-width: 0; }
+svg#board { display: block; width: 100%; max-width: 580px; margin: 0 auto; height: auto; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.tile { stroke: none; transition: fill .25s ease; }
+.tile.w { fill: var(--tile-white); } .tile.b { fill: var(--tile-black); }
+.tint { fill: transparent; pointer-events: none; transition: fill .3s; }
+.tint.you { fill: var(--you-tint); } .tint.ai { fill: var(--ai-tint); }
+.ring { fill: none; stroke: transparent; stroke-width: 6; pointer-events: none; }
+.ring.you { stroke: var(--you); } .ring.ai { stroke: var(--ai); }
+.ring.pending { stroke: var(--pending); stroke-dasharray: 10 7; }
+.num { font-family: var(--font-hand); font-weight: 600; font-size: 58px; text-anchor: middle; dominant-baseline: central; pointer-events: none; transition: fill .25s; }
+.num.w { fill: var(--tile-white-num); } .num.b { fill: var(--tile-black-num); }
+.owner { font-family: var(--font-body); font-size: 14px; font-weight: 700; text-anchor: end; pointer-events: none; }
+.owner.you { fill: var(--you); } .owner.ai { fill: var(--ai); }
+.flipmark { font-family: var(--font-body); font-size: 13px; font-weight: 700; text-anchor: start; pointer-events: none; fill: var(--pending); }
+.cellhit { fill: transparent; cursor: pointer; }
+.cellhit:focus { outline: none; }
+.cellhit:focus-visible { stroke: var(--pending); stroke-width: 3; }
+.frame { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linejoin: round; pointer-events: none; }
+.edge { stroke: var(--dash); stroke-width: 3.2; stroke-dasharray: 9 11; stroke-linecap: round; pointer-events: none; }
+.edge.dead { stroke: transparent; }
+.edge.drawn { stroke-dasharray: none; stroke-width: 6; }
+.edge.drawn.you { stroke: var(--you); } .edge.drawn.ai { stroke: var(--ai); }
+.edge.last { stroke-width: 9; animation: pop .5s ease, glow 1.6s ease-in-out .5s infinite; }
+.edge.last.you { filter: drop-shadow(0 0 10px var(--you)) drop-shadow(0 0 4px var(--you)); }
+.edge.last.ai { filter: drop-shadow(0 0 10px var(--ai)) drop-shadow(0 0 4px var(--ai)); }
+@keyframes pop { from { stroke-width: 18; } to { stroke-width: 9; } }
+@keyframes glow { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+.halo { fill: none; stroke: transparent; stroke-width: 5; pointer-events: none; }
+.halo.you { stroke: var(--you); filter: drop-shadow(0 0 7px var(--you)); animation: glow 1.6s ease-in-out infinite; }
+.halo.ai { stroke: var(--ai); filter: drop-shadow(0 0 7px var(--ai)); animation: glow 1.6s ease-in-out infinite; }
+.tint.flash { animation: flash .9s ease-out; }
+@keyframes flash { 0% { fill: var(--pending); } 100% { } }
+.hit { pointer-events: stroke; stroke: transparent; stroke-width: 30; stroke-linecap: round; cursor: pointer; }
+.hit:hover + .edge, .hit:focus-visible + .edge { stroke: var(--ink-soft); stroke-dasharray: none; stroke-width: 5; }
+.hit:focus { outline: none; }
+.dot { fill: var(--ink); pointer-events: none; }
+.board-off .hit, .board-off .cellhit { pointer-events: none; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .edge.last, .halo.you, .halo.ai, .tint.flash { animation: none; } .tile, .tint, .num { transition: none; } }
+
+aside { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.scores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.score { border: 1.5px solid var(--line); border-radius: 8px; padding: 9px 12px; background: var(--sheet); }
+.score.turn { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; }
+.score.you { color: var(--you); } .score.ai { color: var(--ai); }
+.score .who { font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.score .pts { font-family: var(--font-hand); font-size: 40px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.score .pts small { font-size: 14px; color: var(--ink-soft); font-family: var(--font-body); font-weight: 400; margin-left: 4px; }
+.status { font-size: 15px; min-height: 3.2em; }
+.status b { font-weight: 700; }
+.lastmove { font-size: 13.5px; color: var(--ink-soft); min-height: 1.6em; }
+.read { font-size: 13px; color: var(--ink-soft); border-left: 3px solid var(--line); padding: 2px 0 2px 10px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 6px; border: 1.5px solid var(--ink); background: var(--sheet); color: var(--ink); cursor: pointer; }
+button.primary { background: var(--ink); color: var(--sheet); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--you); outline-offset: 2px; }
+fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px 12px; margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+legend { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--ink-soft); padding: 0 4px; }
+.lbl { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+label { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.seg { display: flex; gap: 6px; }
+.seg label { flex: 1; white-space: nowrap; justify-content: center; border: 1.5px solid var(--line); border-radius: 6px; padding: 6px 4px; text-align: center; font-size: 13.5px; position: relative; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { border-color: var(--ink); font-weight: 700; }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--you); outline-offset: 2px; }
+details { font-size: 13.5px; color: var(--ink-soft); }
+summary { cursor: pointer; color: var(--ink); font-weight: 500; }
+details ul { padding-left: 1.2em; margin: 6px 0 0; }
+.nf .rf, .ff .rn { display: none; }
+.hall { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px; border-top: 1.5px solid var(--line); padding-top: 18px; }
+@media (max-width: 780px) { .hall { grid-template-columns: minmax(0, 1fr); } }
+.hall h2 { font-size: 15px; font-weight: 900; margin: 0 0 10px; letter-spacing: .04em; }
+.rate { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rate .card { border: 1.5px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--sheet); }
+.rate .k { font-size: 12px; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+.rate .pct { font-family: var(--font-hand); font-weight: 600; font-size: 34px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.rate .pct small { font-size: 14px; color: var(--ink-soft); font-family: var(--font-body); font-weight: 400; margin-left: 2px; }
+.rate .n { font-size: 12.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.champs { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; border: 1.5px solid var(--line); border-radius: 8px; background: var(--sheet); }
+.champs li { display: grid; grid-template-columns: 2.4em minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 7px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.champs li:last-child { border-bottom: none; }
+.champs .no { font-family: var(--font-hand); font-weight: 600; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.champs .nm { font-weight: 700; overflow-wrap: anywhere; }
+.champs .meta { font-size: 12px; color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.champs .empty { display: block; color: var(--ink-soft); }
+.hallnote { font-size: 12.5px; color: var(--ink-soft); margin: 8px 0 0; }
+.entry { display: flex; flex-direction: column; gap: 8px; border: 2px solid var(--you); border-radius: 8px; padding: 12px; background: var(--sheet); }
+.entry[hidden] { display: none; }
+.entry b { color: var(--you); }
+.entry .row { display: flex; gap: 8px; }
+.entry input { flex: 1; min-width: 0; font: inherit; padding: 7px 10px; border: 1.5px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); }
+.entry .msg { font-size: 12.5px; color: var(--ink-soft); min-height: 1.2em; }
+.result { font-family: var(--font-hand); font-size: 22px; font-weight: 600; }
+.result.you { color: var(--you); } .result.ai { color: var(--ai); }
+.flipbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; }
+.flipbar[hidden] { display: none; }
+.chip { border: 1.5px dashed var(--pending); border-radius: 999px; padding: 2px 10px; }
+
+/* focus (full-screen) mode */
+.fsbar { display: none; }
+body.focus { padding: 0; overflow: hidden; }
+body.focus .wrap { position: fixed; inset: 0; max-width: none; display: flex; flex-direction: column; gap: 0; background: var(--paper); padding: env(safe-area-inset-top, 0px) 12px env(safe-area-inset-bottom, 0px); }
+body.focus header, body.focus aside { display: none; }
+body.focus .fsbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 4px; }
+.fsbar .fsscore { font-family: var(--font-hand); font-weight: 600; font-size: 22px; font-variant-numeric: tabular-nums; }
+.fsbar .fsscore .y { color: var(--you); } .fsbar .fsscore .a { color: var(--ai); }
+.fsbar .fsstatus { flex: 1; min-width: 0; font-size: 14px; color: var(--ink-soft); }
+body.focus .sheet { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; border: none; border-radius: 0; padding: 8px; }
+body.focus svg#board { max-width: none; width: min(100%, calc(100dvh - 96px)); height: auto; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true">6</div>
+    <div class="t">
+      <h1>6（ロク）</h1>
+      <p class="sub" id="subText"></p>
+    </div>
+    <div class="modes" role="group" aria-label="ゲームの種類">
+      <button id="modeFlip" aria-pressed="true">裏返しあり</button>
+      <button id="modeNoFlip" aria-pressed="false">裏返しなし</button>
+    </div>
+  </header>
+
+  <div class="fsbar">
+    <span class="fsscore"><span class="y">あなた <span id="fsYou">0</span></span>　<span class="a">AI <span id="fsAi">0</span></span></span>
+    <span class="fsstatus" id="fsStatus"></span>
+    <button id="fsUndo">待った</button>
+    <button id="fsExit">全画面を閉じる</button>
+  </div>
+
+  <div class="sheet" id="sheetBox">
+    <svg id="board" viewBox="-24 -24 548 548" aria-label="盤面"></svg>
+  </div>
+
+  <aside>
+    <div class="scores">
+      <div class="score you" id="scYou"><div class="who">あなた</div><div class="pts"><span id="ptYou">0</span><small>点</small></div></div>
+      <div class="score ai" id="scAi"><div class="who">AI</div><div class="pts"><span id="ptAi">0</span><small>点</small></div></div>
+    </div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <form class="entry" id="entry" hidden>
+      <b>最強に勝ちました。殿堂に名前を残せます。</b>
+      <div class="row"><input id="entryName" maxlength="20" placeholder="名前（ニックネームでOK・20文字まで）" autocomplete="nickname"><button class="primary" id="entryBtn" type="submit">登録</button></div>
+      <div class="msg" id="entryMsg"></div>
+    </form>
+    <div class="flipbar" id="flipbar" hidden><span class="chip" id="flipchip"></span><button id="flipEnd" hidden>裏返して手番を終える</button><button id="flipCancel">裏返しをやめる</button></div>
+    <div class="lastmove" id="lastmove"></div>
+    <div class="read" id="read"></div>
+    <div class="btns">
+      <button class="primary" id="newBtn">新しい対局</button>
+      <button id="undoBtn">待った</button>
+      <button id="shuffleBtn">盤面を変える</button>
+      <button id="fsBtn">全画面</button>
+    </div>
+    <fieldset>
+      <legend>次の対局の設定</legend>
+      <div class="lbl">AIの強さ</div>
+      <div class="seg" role="radiogroup" aria-label="AIの強さ">
+        <label><input type="radio" name="level" id="lvNormal" value="normal">普通</label>
+        <label><input type="radio" name="level" id="lvStrong" value="strong">まあまあ強い</label>
+        <label><input type="radio" name="level" id="lvMax" value="max" checked>最強</label>
+      </div>
+      <div class="lbl">先手</div>
+      <div class="seg" role="radiogroup" aria-label="先手">
+        <label><input type="radio" name="first" id="firstYou" value="you" checked>あなた</label>
+        <label><input type="radio" name="first" id="firstAi" value="ai">AI</label>
+      </div>
+      <div class="lbl">盤面</div>
+      <div class="seg" role="radiogroup" aria-label="盤面">
+        <label><input type="radio" name="layout" id="lyStd" value="std">いつもの</label>
+        <label><input type="radio" name="layout" id="lyVary" value="vary" checked>少し変える</label>
+      </div>
+      <label><input type="checkbox" id="showRead" checked>AIの読みを表示</label>
+      <label><input type="checkbox" id="sound" checked>打ったときの音を鳴らす</label>
+    </fieldset>
+    <details>
+      <summary>ルール</summary>
+      <ul>
+        <li>外周ははじめから引いてある。内側の辺を交互に1本ずつ引く。</li>
+        <li class="rf">自分の番では、辺を引く前にまだ取られていないマスを1枚だけ裏返してもよい（裏返さなくてもよい）。</li>
+        <li class="rf">白を裏返すと黒になり数字が1増える（白5→黒6）。黒を裏返すと白に戻る。</li>
+        <li class="rn">線で閉じた区画のマスがすべて同じ数字になったら、その辺を引いた人がその区画の数字の合計をもらう。2つの区画が同時に閉じたら両方もらえる。</li>
+        <li class="rn">取られた区画の中には、もう線を引けない。</li>
+        <li class="rf">線で閉じた区画のマスがすべて同じ数字になったら、その瞬間にその区画の数字の合計をもらう。辺を引いて閉じたときも、裏返して同じ数字にしたときも同じ。白と黒が混ざっていても数字が同じなら取れる。2つの区画が同時に閉じたら両方もらえる。</li>
+        <li class="rf">取られた区画の中には、もう線を引けないし、裏返せない。裏返しで区画を取ったら、辺はそれ以外の場所に引く（最後の区画なら辺は引かずに手番終了）。</li>
+        <li>全部の区画が取られたら終了。点数が多いほうの勝ち。</li>
+      </ul>
+      <p class="rn" style="margin:8px 0 0">操作：引きたい辺をクリックします。</p>
+      <p class="rf" style="margin:8px 0 0">操作：マスをクリックすると裏返し予約（もう一度クリックで取り消し）。辺をクリックすると手番が確定します。</p>
+    </details>
+  </aside>
+
+  <section class="hall" id="hall" hidden>
+    <div>
+      <h2>最強AIへの挑戦成績</h2>
+      <div class="rate">
+        <div class="card"><div class="k">裏返しあり</div><div class="pct" id="rateFlip">–</div><div class="n" id="nFlip"></div></div>
+        <div class="card"><div class="k">裏返しなし</div><div class="pct" id="rateNo">–</div><div class="n" id="nNo"></div></div>
+      </div>
+      <p class="hallnote">挑戦者の勝率です。「最強」で最後まで指した対局だけを数えます。最強戦では「待った」は使えません。</p>
+    </div>
+    <div>
+      <h2>殿堂（最強に勝った人）</h2>
+      <ol class="champs" id="champs"><li><span class="empty">読み込み中…</span></li></ol>
+    </div>
+  </section>
+</div>
+
+<script id="engine">
+'use strict';
+// ===== Game "6" engine =====
+// Cells 0..24 (r*5+c). Hm bit i (i<20): edge between cell i and i+5 is UNDRAWN.
+// Vm bit i (col<4): edge between cell i and i+1 is UNDRAWN.
+// U: uncaptured cells. F: flipped (black) cells; value = base + 1 when flipped.
+// A turn = optional flip of one uncaptured cell + drawing one undrawn edge inside the uncaptured area.
+// After the turn, every enclosed region whose cells all show the same number is captured by the mover.
+let NO_FLIP = false; // variant without flipping
+const BASE = [1,1,1,4,4, 1,1,4,4,4, 1,2,5,4,3, 2,2,3,3,3, 2,2,2,3,3];
+const STANDARD = BASE.slice();
+const BM = [0,0,0,0,0,0,0,0];
+function setBoard(b) { for (let i = 0; i < 25; i++) BASE[i] = b[i]; BM.fill(0); for (let i = 0; i < 25; i++) BM[BASE[i]] |= 1 << i; }
+setBoard(BASE);
+const FULL = (1 << 25) - 1;
+let H_ALL = 0, V_ALL = 0;
+for (let i = 0; i < 20; i++) H_ALL |= 1 << i;
+for (let i = 0; i < 25; i++) if (i % 5 !== 4) V_ALL |= 1 << i;
+
+function edgeEnds(e) { if (e < 20) return [e, e + 5]; const k = e - 20; const a = (k >> 2) * 5 + (k & 3); return [a, a + 1]; }
+function edgeA(e) { return e < 20 ? e : ((e - 20) >> 2) * 5 + ((e - 20) & 3); }
+function flood(seed, Hm, Vm, within) { let S = seed; for (;;) { const N = (S | ((S & Hm) << 5) | ((S >>> 5) & Hm) | ((S & Vm) << 1) | ((S >>> 1) & Vm)) & within; if (N === S) return S; S = N; } }
+function popcnt(x) { x = x - ((x >>> 1) & 0x55555555); x = (x & 0x33333333) + ((x >>> 2) & 0x33333333); return (((x + (x >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24; }
+function cellVal(i, F) { return BASE[i] + ((F >>> i) & 1); }
+// value masks for flip state F: M[v] = cells currently showing v
+const MK = new Int32Array(8);
+function masks(F, M) { for (let v = 1; v <= 6; v++) M[v] = (BM[v] & ~F) | (BM[v - 1] & F); }
+// if P is single-valued under masks M, return its total; else 0
+function monoGain(P, M, F) { const i = 31 - Math.clz32(P & -P); const v = BASE[i] + ((F >>> i) & 1); return (P & ~M[v]) === 0 ? v * popcnt(P) : 0; }
+function sumVals(P, F) { let s = 0; while (P) { const b = P & -P; P ^= b; const i = 31 - Math.clz32(b); s += BASE[i] + ((F >>> i) & 1); } return s; }
+
+function initialState() { return { Hm: H_ALL, Vm: V_ALL, U: FULL, F: 0 }; }
+function edgeLegal(st, e) { const a = edgeA(e); return ((st.U >>> a) & 1) === 1 && ((e < 20 ? st.Hm : st.Vm) >>> a & 1) === 1; }
+function legalEdges(Hm, Vm, U) {
+  const out = [];
+  let hb = Hm & U; while (hb) { const b = hb & -hb; hb ^= b; out.push(31 - Math.clz32(b)); }
+  let vb = Vm & U; while (vb) { const b = vb & -vb; vb ^= b; const i = 31 - Math.clz32(b); out.push(20 + ((i / 5) | 0) * 4 + (i % 5)); }
+  return out;
+}
+
+// Reference (slow, obviously correct) turn application.
+function applyTurn(st, flip, e) {
+  // 1) optional flip: if the flipped cell's region becomes single-valued, it is captured right away
+  let F = st.F, U = st.U, cap = 0;
+  let Hm = st.Hm, Vm = st.Vm;
+  if (flip >= 0) {
+    if (!((U >>> flip) & 1)) return null;
+    F ^= 1 << flip;
+    const M0 = new Int32Array(8); masks(F, M0);
+    const R = flood(1 << flip, Hm, Vm, U);
+    if (monoGain(R, M0, F)) { cap |= R; U &= ~R; }
+  }
+  // 2) draw one edge inside the remaining area (no edge when nothing remains)
+  if (e < 0) { if (U !== 0) return null; }
+  else {
+    const a = edgeA(e);
+    if (!((U >>> a) & 1) || !(((e < 20 ? Hm : Vm) >>> a) & 1)) return null;
+    if (e < 20) Hm &= ~(1 << a); else Vm &= ~(1 << a);
+    const M = new Int32Array(8); masks(F, M);
+    let rest = U;
+    while (rest) { const s = rest & -rest; const R = flood(s, Hm, Vm, U); rest &= ~R; if (monoGain(R, M, F)) cap |= R; }
+    U &= ~cap;
+  }
+  return { Hm, Vm, U, F, gain: sumVals(cap, F), cap };
+}
+
+// ===== Fast move generation =====
+// Writes moves into buffers at offset base; returns count.
+// Each move: flip (-1..24), edge, gain, child Hm,Vm,U,F
+const MAXM = 1100, MAXPLY = 48;
+const gFlip = new Int8Array(MAXM * MAXPLY), gEdge = new Int8Array(MAXM * MAXPLY), gGain = new Int16Array(MAXM * MAXPLY);
+const gH = new Int32Array(MAXM * MAXPLY), gV = new Int32Array(MAXM * MAXPLY), gU = new Int32Array(MAXM * MAXPLY), gF = new Int32Array(MAXM * MAXPLY);
+const gS = new Int32Array(MAXM * MAXPLY);
+const regionOf = new Int32Array(25 * MAXPLY); // region mask containing cell (per ply)
+const Mloc = new Int32Array(8), Mf = new Int32Array(8);
+const flipRegGain = new Int32Array(25);
+
+function genMoves(Hm, Vm, U, F, base, ply, hot) {
+  if (hot === undefined) hot = -1;
+  masks(F, Mloc);
+  // regions
+  const rb = ply * 25;
+  let rest = U;
+  while (rest) { const s = rest & -rest; const R = flood(s, Hm, Vm, U); rest &= ~R; let x = R; while (x) { const b = x & -x; x ^= b; regionOf[rb + 31 - Math.clz32(b)] = R; } }
+  // flip-only gain for each cell (captures its own region if that region becomes single-valued)
+  let ux = NO_FLIP ? 0 : U;
+  while (ux) { const b = ux & -ux; ux ^= b; const c = 31 - Math.clz32(b); const Ff = F ^ b; masks(Ff, Mf); flipRegGain[c] = monoGain(regionOf[rb + c], Mf, Ff); }
+  let n = 0;
+  const edges = legalEdges(Hm, Vm, U);
+  for (let k = 0; k < edges.length; k++) {
+    const e = edges[k]; const [a, b2] = edgeEnds(e);
+    let nH = Hm, nV = Vm; if (e < 20) nH &= ~(1 << a); else nV &= ~(1 << a);
+    const R = regionOf[rb + a];
+    const A = flood(1 << a, nH, nV, R);
+    const split = !((A >>> b2) & 1);
+    const B = split ? R & ~A : 0;
+    const gA0 = split ? monoGain(A, Mloc, F) : 0, gB0 = split ? monoGain(B, Mloc, F) : 0;
+    // no flip
+    {
+      const cap = (gA0 ? A : 0) | (gB0 ? B : 0);
+      const o = base + n++; gFlip[o] = -1; gEdge[o] = e; gGain[o] = gA0 + gB0; gH[o] = nH; gV[o] = nV; gU[o] = U & ~cap; gF[o] = F;
+    }
+    // with flip c
+    let cx = NO_FLIP ? 0 : U;
+    while (cx) {
+      const bb = cx & -cx; cx ^= bb; const c = 31 - Math.clz32(bb); const Ff = F ^ bb;
+      let cap = 0, gain = 0;
+      if ((R & bb) && flipRegGain[c]) continue; // region taken by the flip: cannot draw inside it
+      if (R & bb) {
+        if (split) {
+          masks(Ff, Mf);
+          if (A & bb) { const g1 = monoGain(A, Mf, Ff); if (g1) { cap |= A; gain += g1; } if (gB0) { cap |= B; gain += gB0; } }
+          else { const g1 = monoGain(B, Mf, Ff); if (g1) { cap |= B; gain += g1; } if (gA0) { cap |= A; gain += gA0; } }
+        } else {
+          const g1 = flipRegGain[c]; if (g1) { cap = R; gain = g1; }
+        }
+      } else {
+        if (gA0) { cap |= A; gain += gA0; } if (gB0) { cap |= B; gain += gB0; }
+        const g1 = flipRegGain[c]; if (g1) { cap |= regionOf[rb + c]; gain += g1; }
+      }
+      if (gain === 0 && !(hot & bb)) continue;
+      const o = base + n++; gFlip[o] = c; gEdge[o] = e; gGain[o] = gain; gH[o] = nH; gV[o] = nV; gU[o] = U & ~cap; gF[o] = Ff;
+    }
+  }
+  // flip that captures the whole remaining area: turn ends without an edge
+  let cx2 = NO_FLIP ? 0 : U;
+  while (cx2) { const bb = cx2 & -cx2; cx2 ^= bb; const c = 31 - Math.clz32(bb);
+    if (flipRegGain[c] && regionOf[rb + c] === U) { const o = base + n++; gFlip[o] = c; gEdge[o] = -1; gGain[o] = flipRegGain[c]; gH[o] = Hm; gV[o] = Vm; gU[o] = 0; gF[o] = F ^ bb; } }
+  return n;
+}
+
+// Best immediate gain available to the side to move (fast, used for evaluation).
+const Mx = new Int32Array(8);
+function oneOffFix(P, F) {
+  // returns value of P if exactly one flip inside P makes it single-valued (P currently not single-valued), else 0
+  const cnt = popcnt(P); let best = 0;
+  for (let v = 1; v <= 6; v++) {
+    const Mv = (BM[v] & ~F) | (BM[v - 1] & F);
+    const off = P & ~Mv;
+    if (off && (off & (off - 1)) === 0) {
+      const c = 31 - Math.clz32(off);
+      const fv = BASE[c] + (((F >>> c) & 1) ^ 1);
+      if (fv === v && v * cnt > best) best = v * cnt;
+    }
+  }
+  return best;
+}
+function maxGainNoFlip(Hm, Vm, U, F) {
+  masks(F, Mx);
+  let best = 0, rest = U;
+  while (rest) {
+    const s0 = rest & -rest; const R = flood(s0, Hm, Vm, U); rest &= ~R;
+    let hb = Hm & R;
+    while (hb) { const bb = hb & -hb; hb ^= bb; const a = 31 - Math.clz32(bb); const A = flood(bb, Hm & ~bb, Vm, R); if ((A >>> (a + 5)) & 1) continue; const g = monoGain(A, Mx, F) + monoGain(R & ~A, Mx, F); if (g > best) best = g; }
+    let vb = Vm & R;
+    while (vb) { const bb = vb & -vb; vb ^= bb; const a = 31 - Math.clz32(bb); const A = flood(bb, Hm, Vm & ~bb, R); if ((A >>> (a + 1)) & 1) continue; const g = monoGain(A, Mx, F) + monoGain(R & ~A, Mx, F); if (g > best) best = g; }
+  }
+  return best;
+}
+function flipPieceVal(P, g, F) {
+  // value of piece P if the mover flips a cell inside it (0 if it cannot end single-valued)
+  if (g) { if ((P & (P - 1)) === 0) { const c = 31 - Math.clz32(P); return BASE[c] + (((F >>> c) & 1) ^ 1); } return 0; }
+  return oneOffFix(P, F);
+}
+function bestSplit(A, B, gA, gB, F, excl) {
+  return Math.max(gA + gB + excl, flipPieceVal(A, gA, F) + gB, gA + flipPieceVal(B, gB, F));
+}
+function maxGainFast(Hm, Vm, U, F) {
+  if (!U) return 0;
+  if (NO_FLIP) return maxGainNoFlip(Hm, Vm, U, F);
+  masks(F, Mx);
+  const regs = [], fix = [];
+  let rest = U;
+  while (rest) { const s = rest & -rest; const R = flood(s, Hm, Vm, U); rest &= ~R; regs.push(R); fix.push(oneOffFix(R, F)); }
+  // best and second-best region fix values
+  let b1 = 0, b1i = -1, b2 = 0;
+  for (let i = 0; i < regs.length; i++) { const f = fix[i]; if (f > b1) { b2 = b1; b1 = f; b1i = i; } else if (f > b2) b2 = f; }
+  let best = b1;
+  for (let i = 0; i < regs.length; i++) {
+    const R = regs[i]; const excl = i === b1i ? b2 : b1;
+    let hb = Hm & R;
+    while (hb) {
+      const bb = hb & -hb; hb ^= bb; const a = 31 - Math.clz32(bb);
+      const nH = Hm & ~bb; const A = flood(bb, nH, Vm, R);
+      if ((A >>> (a + 5)) & 1) continue;
+      const B = R & ~A;
+      const gA = monoGain(A, Mx, F), gB = monoGain(B, Mx, F);
+      const g = bestSplit(A, B, gA, gB, F, excl);
+      if (g > best) best = g;
+    }
+    let vb = Vm & R;
+    while (vb) {
+      const bb = vb & -vb; vb ^= bb; const a = 31 - Math.clz32(bb);
+      const nV = Vm & ~bb; const A = flood(bb, Hm, nV, R);
+      if ((A >>> (a + 1)) & 1) continue;
+      const B = R & ~A;
+      const gA = monoGain(A, Mx, F), gB = monoGain(B, Mx, F);
+      const g = bestSplit(A, B, gA, gB, F, excl);
+      if (g > best) best = g;
+    }
+  }
+  return best;
+}
+
+// ===== Search =====
+const IS_WORKER = typeof document === 'undefined';
+const TT_BITS = IS_WORKER ? 22 : 4, TT_SIZE = 1 << TT_BITS;
+const ttK1 = new Int32Array(TT_SIZE), ttK2 = new Int32Array(TT_SIZE), ttK3 = new Int32Array(TT_SIZE);
+const ttV = new Int16Array(TT_SIZE), ttF = new Uint8Array(TT_SIZE), ttM = new Int16Array(TT_SIZE), ttD = new Int8Array(TT_SIZE);
+ttK1.fill(-1);
+function ttClear() { ttK1.fill(-1); }
+const EXACT = 1, LOWER = 2, UPPER = 3;
+let nodes = 0, deadline = Infinity, aborted = false, SELECTIVE = true;
+const hist = new Int32Array(26 * 41);
+const INF = 1000;
+let EXACT_EDGES = 14;
+
+function search(Hm, Vm, U, F, alpha, beta, depth, ply) {
+  if ((++nodes & 1023) === 0 && Date.now() > deadline) { aborted = true; return 0; }
+  if (U === 0) return 0;
+  const rem = sumVals(U, FULL); // bound: every remaining cell at its larger value
+  if (alpha >= rem) return alpha;
+  if (beta <= -rem) return beta;
+  const k1 = Hm & U, k2 = Vm & U, k3 = F & U;
+  const idx = (Math.imul(k1 ^ 0x5bd1e995, 0x9E3779B1) ^ Math.imul(k2 + 0x7F4A7C15, 0x85EBCA6B) ^ Math.imul(k3 + 0x1b873593, 0xC2B2AE35)) >>> (32 - TT_BITS);
+  let ttMove = -1;
+  if (ttK1[idx] === k1 && ttK2[idx] === k2 && ttK3[idx] === k3) {
+    if (ttD[idx] >= depth) { const v = ttV[idx], f = ttF[idx]; if (f === EXACT) return v; if (f === LOWER && v >= beta) return v; if (f === UPPER && v <= alpha) return v; }
+    ttMove = ttM[idx];
+  }
+  if (depth <= 0) return maxGainFast(Hm, Vm, U, F) >> 1;
+  const base = ply * MAXM;
+  let hot = -1;
+  if (SELECTIVE) {
+    hot = 0; const g0 = maxGainFast(Hm, Vm, U, F);
+    let cx = U; while (cx) { const bb = cx & -cx; cx ^= bb; if (maxGainFast(Hm, Vm, U, F ^ bb) !== g0) hot |= bb; }
+  }
+  const n = genMoves(Hm, Vm, U, F, base, ply, hot);
+  for (let k = 0; k < n; k++) {
+    const o = base + k; const mk = (gFlip[o] + 1) * 41 + gEdge[o] + 1;
+    gS[o] = (mk === ttMove ? 1 << 29 : 0) + (gGain[o] << 22) + Math.min(hist[mk], 2000000) + (gFlip[o] < 0 ? 1 : 0);
+  }
+  const a0 = alpha; let best = -INF, bestMk = -1;
+  for (let k = 0; k < n; k++) {
+    let bi = k; for (let j = k + 1; j < n; j++) if (gS[base + j] > gS[base + bi]) bi = j;
+    if (bi !== k) swapMove(base + k, base + bi);
+    const o = base + k;
+    const g = gGain[o];
+    const v = g - search(gH[o], gV[o], gU[o], gF[o], g - beta, g - alpha, depth - 1, ply + 1);
+    if (aborted) return 0;
+    if (v > best) { best = v; bestMk = (gFlip[o] + 1) * 41 + gEdge[o] + 1; }
+    if (v > alpha) alpha = v;
+    if (alpha >= beta) { hist[(gFlip[o] + 1) * 41 + gEdge[o] + 1] += depth * depth; break; }
+  }
+  ttK1[idx] = k1; ttK2[idx] = k2; ttK3[idx] = k3; ttV[idx] = best; ttM[idx] = bestMk; ttD[idx] = depth;
+  ttF[idx] = best <= a0 ? UPPER : best >= beta ? LOWER : EXACT;
+  return best;
+}
+function swapMove(i, j) {
+  let t;
+  t = gFlip[i]; gFlip[i] = gFlip[j]; gFlip[j] = t; t = gEdge[i]; gEdge[i] = gEdge[j]; gEdge[j] = t;
+  t = gGain[i]; gGain[i] = gGain[j]; gGain[j] = t; t = gS[i]; gS[i] = gS[j]; gS[j] = t;
+  t = gH[i]; gH[i] = gH[j]; gH[j] = t; t = gV[i]; gV[i] = gV[j]; gV[j] = t;
+  t = gU[i]; gU[i] = gU[j]; gU[j] = t; t = gF[i]; gF[i] = gF[j]; gF[j] = t;
+}
+
+// Root search at fixed depth; root moves pre-ordered by `order` (array of {flip, edge}).
+function rootSearch(st, depth, timeLeft, order) {
+  deadline = Date.now() + timeLeft; aborted = false;
+  let alpha = -INF, best = null;
+  for (const m of order) {
+    const g = m.gain;
+    const sub = (a, b) => g - search(m.Hm, m.Vm, m.U, m.F, g - b, g - a, depth - 1, 1);
+    let v;
+    if (best === null) v = sub(-INF, INF);
+    else { v = sub(alpha, alpha + 1); if (!aborted && v > alpha) v = sub(alpha, INF); }
+    if (aborted) return null;
+    m.v = v;
+    if (best === null || v > alpha) { alpha = v; best = m; }
+  }
+  return { best, value: alpha };
+}
+
+function allRootMoves(st) {
+  const n = genMoves(st.Hm, st.Vm, st.U, st.F, 0, 0);
+  const out = [];
+  for (let k = 0; k < n; k++) out.push({ flip: gFlip[k], edge: gEdge[k], gain: gGain[k], Hm: gH[k], Vm: gV[k], U: gU[k], F: gF[k] });
+  return out;
+}
+
+// level: 'normal' | 'strong' | 'max'
+const MAX_THINK_MS = 6500; // hard cap so a move never takes more than ~7 s
+function think(st, level) {
+  const tStart = Date.now();
+  hist.fill(0);
+  const moves = allRootMoves(st);
+  const rnd = () => Math.random();
+  // 2-ply score: my gain minus opponent's best immediate reply
+  for (const m of moves) { m.opp = m.U ? maxGainFast(m.Hm, m.Vm, m.U, m.F) : 0; m.s2 = m.gain - m.opp; m.r = rnd(); }
+  if (level === 'normal') {
+    // greedy: grab the biggest capture; otherwise usually avoid gifting, sometimes not
+    const careful = rnd() < 0.6;
+    moves.sort((a, b) => (b.gain - a.gain) || (careful ? (a.opp - b.opp) : 0) || (a.r - b.r));
+    const m = moves[0];
+    return { flip: m.flip, edge: m.edge, value: null, exact: false, depth: 1 };
+  }
+  moves.sort((a, b) => (b.s2 - a.s2) || ((a.flip < 0) - (b.flip < 0)) * -1 || (a.r - b.r));
+  if (level === 'strong') {
+    const m = moves[0];
+    return { flip: m.flip, edge: m.edge, value: m.s2, exact: false, depth: 2 };
+  }
+  // max: iterative deepening alpha-beta
+  const nEdges = legalEdges(st.Hm, st.Vm, st.U).length;
+  let t0 = Date.now();
+  let budget = MAX_THINK_MS - (t0 - tStart);
+  let last = { flip: moves[0].flip, edge: moves[0].edge, value: moves[0].s2, exact: false, depth: 2 };
+  if (NO_FLIP) {
+    const exactMs = Math.min(budget - 300, nEdges <= 24 ? 5500 : nEdges <= 28 ? 3000 : 0);
+    if (exactMs > 0) {
+      if (SELECTIVE) { ttClear(); SELECTIVE = false; }
+      const r = rootSearch(st, nEdges + 1, exactMs, moves);
+      if (r) return { flip: -1, edge: r.best.edge, value: r.value, exact: true, depth: nEdges };
+      budget = MAX_THINK_MS - (Date.now() - tStart); t0 = Date.now();
+    }
+  }
+  const sel = NO_FLIP ? false : nEdges > EXACT_EDGES;
+  if (sel !== SELECTIVE) ttClear();
+  SELECTIVE = sel;
+  for (let d = 3; d <= nEdges + 1; d++) {
+    const left = budget - (Date.now() - t0);
+    if (left < 100) break;
+    const r = rootSearch(st, d, left, moves);
+    if (!r) break;
+    const exact = !SELECTIVE && d >= nEdges;
+    last = { flip: r.best.flip, edge: r.best.edge, value: r.value, exact, depth: d };
+    // move best to front for next iteration
+    const i = moves.indexOf(r.best); moves.splice(i, 1); moves.unshift(r.best);
+    if (exact) break;
+    if (Date.now() - t0 > budget * 0.4) break;
+  }
+  return last;
+}
+
+if (typeof self !== 'undefined' && typeof document === 'undefined' && typeof module === 'undefined') {
+  self.onmessage = (ev) => {
+    const m = ev.data;
+    if (m.type === 'reset') { ttClear(); return; }
+    if (m.type === 'think') {
+      if (m.board && m.board.join() !== BASE.join()) { setBoard(m.board); ttClear(); }
+      if (typeof m.noFlip === 'boolean' && m.noFlip !== NO_FLIP) { NO_FLIP = m.noFlip; ttClear(); }
+      const r = think(m.st, m.level); self.postMessage({ id: m.id, ...r }); }
+  };
+}
+if (typeof module !== 'undefined') module.exports = { setBoard, STANDARD, setNoFlip: (x) => { NO_FLIP = x; }, BASE, initialState, applyTurn, genMoves, allRootMoves, maxGainFast, think, legalEdges, gFlip, gEdge, gGain, gU, gF, gH, gV, cellVal };
+
+</script>
+
+<script>
+// 記録係（Google Apps Script）のURL。空のままなら成績・殿堂は表示されない。
+const RECORD_URL = 'https://script.google.com/macros/s/AKfycbzZbjpbzutfi_3mmpGFne73QroeCyLzQerAWIS0UbkSttUWIUWRgvyAWDtBOkyUy4lS/exec';
+(() => {
+  const svg = document.getElementById('board');
+  const NS = 'http://www.w3.org/2000/svg';
+  const S = 100;
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, attrs, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; };
+  const posName = (i) => `${Math.floor(i / 5) + 1}段目${i % 5 + 1}列目`;
+
+  // ---- worker ----
+  const workerSrc = document.getElementById('engine').textContent;
+  let worker = null, thinkId = 0;
+  function makeWorker() {
+    if (worker) worker.terminate();
+    worker = new Worker(URL.createObjectURL(new Blob([workerSrc], { type: 'text/javascript' })));
+    worker.onmessage = onAiMove;
+  }
+
+  // ---- board ----
+  const gCells = el('g', {}, svg), gEdges = el('g', {}, svg), gTop = el('g', {}, svg);
+  const tile = [], tint = [], ring = [], halo = [], num = [], owner = [], fmark = [], chit = [];
+  for (let i = 0; i < 25; i++) {
+    const r = Math.floor(i / 5), c = i % 5, x = c * S, y = r * S;
+    tile.push(el('rect', { x: x + 2, y: y + 2, width: S - 4, height: S - 4, rx: 5, class: 'tile w' }, gCells));
+    tint.push(el('rect', { x: x + 2, y: y + 2, width: S - 4, height: S - 4, rx: 5, class: 'tint' }, gCells));
+    ring.push(el('rect', { x: x + 8, y: y + 8, width: S - 16, height: S - 16, rx: 6, class: 'ring' }, gCells));
+    halo.push(el('rect', { x: x + 4, y: y + 4, width: S - 8, height: S - 8, rx: 7, class: 'halo' }, gCells));
+    const t = el('text', { x: x + S / 2, y: y + S / 2 + 2, class: 'num w' }, gCells); num.push(t);
+    owner.push(el('text', { x: x + S - 12, y: y + S - 13, class: 'owner' }, gCells));
+    fmark.push(el('text', { x: x + 12, y: y + 24, class: 'flipmark' }, gCells));
+    const h = el('rect', { x: x + 14, y: y + 14, width: S - 28, height: S - 28, rx: 8, class: 'cellhit', tabindex: 0, role: 'button', 'aria-label': `${posName(i)}のマスを裏返す` }, gCells);
+    h.addEventListener('click', () => toggleFlip(i));
+    h.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleFlip(i); } });
+    chit.push(h);
+  }
+  const edgeLine = [], edgeHit = [];
+  for (let e = 0; e < 40; e++) {
+    let x1, y1, x2, y2;
+    if (e < 20) { const r = Math.floor(e / 5), c = e % 5; x1 = c * S; x2 = (c + 1) * S; y1 = y2 = (r + 1) * S; }
+    else { const k = e - 20, r = Math.floor(k / 4), c = k % 4; y1 = r * S; y2 = (r + 1) * S; x1 = x2 = (c + 1) * S; }
+    const horiz = y1 === y2, pad = 14;
+    const hit = el('line', horiz ? { x1: x1 + pad, y1, x2: x2 - pad, y2 } : { x1, y1: y1 + pad, x2, y2: y2 - pad }, gEdges);
+    hit.setAttribute('class', 'hit'); hit.setAttribute('tabindex', 0); hit.setAttribute('role', 'button'); hit.setAttribute('aria-label', `辺を引く`);
+    const ln = el('line', horiz ? { x1: x1 + 4, y1, x2: x2 - 4, y2 } : { x1, y1: y1 + 4, x2, y2: y2 - 4, }, gEdges);
+    ln.setAttribute('class', 'edge');
+    hit.addEventListener('click', () => humanMove(e));
+    hit.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); humanMove(e); } });
+    edgeHit.push(hit); edgeLine.push(ln);
+  }
+  el('rect', { x: 0, y: 0, width: 5 * S, height: 5 * S, rx: 8, class: 'frame' }, gTop);
+  for (let r = 1; r < 5; r++) for (let c = 1; c < 5; c++) el('circle', { cx: c * S, cy: r * S, r: 3.2, class: 'dot' }, gTop);
+
+  // ---- state ----
+  let game = null;
+  function level() { return $('lvNormal').checked ? 'normal' : $('lvStrong').checked ? 'strong' : 'max'; }
+  // ---- board layouts ----
+  const rint = (n) => Math.floor(Math.random() * n);
+  function groupsConnected(b) {
+    for (let v = 1; v <= 5; v++) {
+      const cells = []; for (let i = 0; i < 25; i++) if (b[i] === v) cells.push(i);
+      if (!cells.length) continue;
+      const seen = new Set([cells[0]]), q = [cells[0]];
+      while (q.length) { const x = q.pop(); const r = Math.floor(x / 5), c = x % 5;
+        for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]) { const rr = r + dr, cc = c + dc; if (rr < 0 || rr > 4 || cc < 0 || cc > 4) continue; const y = rr * 5 + cc; if (b[y] === v && !seen.has(y)) { seen.add(y); q.push(y); } } }
+      if (seen.size !== cells.length) return false;
+    }
+    return true;
+  }
+  function varyBoard() {
+    // a few swaps of neighbouring cells with different numbers; each number stays one connected group
+    for (let tries = 0; tries < 500; tries++) {
+      const b = STANDARD.slice(); const k = 2 + rint(2);
+      for (let s = 0; s < k; s++) {
+        const i = rint(25), r = Math.floor(i / 5), c = i % 5; const opts = [];
+        if (r < 4) opts.push(i + 5); if (c < 4) opts.push(i + 1);
+        if (i === 12) { s--; continue; } // the 5 stays in the centre
+        for (let q = opts.length - 1; q >= 0; q--) if (opts[q] === 12) opts.splice(q, 1);
+        if (!opts.length) { s--; continue; }
+        const j = opts[rint(opts.length)]; if (b[i] === b[j]) { s--; continue; }
+        const t = b[i]; b[i] = b[j]; b[j] = t;
+      }
+      if (b.join() !== STANDARD.join() && groupsConnected(b)) return b;
+    }
+    return STANDARD.slice();
+  }
+  function makeBoard() {
+    if ($('lyStd').checked) return STANDARD.slice();
+    return varyBoard();
+  }
+
+  let mode = (location.hash === '#noflip') ? 'noflip' : 'flip';
+  function setMode(m) { mode = m; try { history.replaceState(null, '', m === 'noflip' ? '#noflip' : '#flip'); } catch (_) {} newGame(); }
+  function newGame() {
+    if ($('entryName')) { $('entryName').disabled = false; $('entryName').value = ''; $('entryBtn').disabled = false; }
+    setBoard(makeBoard());
+    thinkId++;
+    const noFlip = mode === 'noflip';
+    NO_FLIP = noFlip;
+    document.body.classList.toggle('nf', noFlip); document.body.classList.toggle('ff', !noFlip);
+    $('modeFlip').setAttribute('aria-pressed', String(!noFlip)); $('modeNoFlip').setAttribute('aria-pressed', String(noFlip));
+    $('subText').textContent = noFlip ? '辺を1本ずつ交互に引く。同じ数字だけの区画を囲い切った人がその数字をもらう。' : 'マスを1枚裏返して、辺を1本引く。同じ数字だけの区画を囲い切った人がその数字をもらう。';
+    document.title = noFlip ? '6 裏返しなし' : '6';
+    game = {
+      noFlip, st: initialState(), moves: [], gameId: Math.random().toString(36).slice(2, 12) + Date.now().toString(36), board0: BASE.slice(), firstWho: $('firstAi').checked ? 'ai' : 'you', ranked: false, turn: $('firstAi').checked ? 'ai' : 'you', level: level(),
+      score: { you: 0, ai: 0 }, edgeOwner: new Array(40).fill(null), cellOwner: new Array(25).fill(null),
+      last: -1, lastFlip: -1, lastWho: null, flashCap: 0, pending: -1, history: [], over: false, thinking: false, read: null, lastText: '',
+    };
+    game.ranked = !!RECORD_URL && game.level === 'max';
+    $('entry').hidden = true;
+    makeWorker();
+    render();
+    if (game.turn === 'ai') aiTurn();
+  }
+  function snap() {
+    return JSON.stringify({ st: game.st, turn: game.turn, score: game.score, edgeOwner: game.edgeOwner, cellOwner: game.cellOwner, last: game.last, lastFlip: game.lastFlip, lastWho: game.lastWho, over: game.over, lastText: game.lastText });
+  }
+  function play(flip, e, who) {
+    const r = applyTurn(game.st, flip, e);
+    if (!r) return null;
+    game.history.push({ snap: snap(), who });
+    game.st = { Hm: r.Hm, Vm: r.Vm, U: r.U, F: r.F };
+    if (e >= 0) game.edgeOwner[e] = who;
+    game.last = e; game.lastFlip = flip; game.lastWho = who; game.lastCap = r.cap; game.flashCap = r.cap; game.pending = -1;
+    for (let i = 0; i < 25; i++) if ((r.cap >>> i) & 1) game.cellOwner[i] = who;
+    game.score[who] += r.gain;
+    const name = who === 'you' ? 'あなた' : 'AI';
+    const fl = flip >= 0 ? `${posName(flip)}を裏返して` : (game.noFlip ? '' : '裏返さずに');
+    game.lastText = e >= 0 ? `${name}：${fl}辺を引いた` + (r.gain ? `。${r.gain}点獲得` : '') : `${name}：${posName(flip)}を裏返して最後の区画を取った。${r.gain}点獲得`;
+    if (game.st.U === 0) game.over = true; else game.turn = who === 'you' ? 'ai' : 'you';
+    sound(who, flip, e, r.gain);
+    game.moves.push([who === 'you' ? 0 : 1, flip, e]);
+    if (game.over) onGameOver();
+    return r;
+  }
+  function toggleFlip(i) {
+    if (game && game.noFlip) return;
+    if (!game || game.over || game.turn !== 'you' || game.thinking) return;
+    if (!((game.st.U >>> i) & 1)) return;
+    game.pending = game.pending === i ? -1 : i;
+    render();
+  }
+  function flipPreview(st, c) {
+    const F = st.F ^ (1 << c);
+    const R = (() => { let S = 1 << c; for (;;) { const N = (S | ((S & st.Hm) << 5) | ((S >>> 5) & st.Hm) | ((S & st.Vm) << 1) | ((S >>> 1) & st.Vm)) & st.U; if (N === S) return S; S = N; } })();
+    let v0 = -1, mono = true, sum = 0;
+    for (let i = 0; i < 25; i++) if ((R >>> i) & 1) { const v = BASE[i] + ((F >>> i) & 1); sum += v; if (v0 < 0) v0 = v; else if (v !== v0) mono = false; }
+    return mono ? { F, U: st.U & ~R, cap: R, gain: sum } : { F, U: st.U, cap: 0, gain: 0 };
+  }
+  function humanMove(e) {
+    if (!game || game.over || game.turn !== 'you' || game.thinking) return;
+    if (!play(game.pending, e, 'you')) return;
+    render();
+    if (!game.over) aiTurn();
+  }
+  function aiTurn() {
+    game.thinking = true; render();
+    const id = ++thinkId;
+    game.thinkStart = Date.now();
+    setTimeout(() => worker.postMessage({ type: 'think', id, st: game.st, level: game.level, board: BASE.slice(), noFlip: game.noFlip }), 30);
+  }
+  function onAiMove(ev) {
+    const m = ev.data;
+    if (m.id !== thinkId || !game || game.over) return;
+    const wait = 1000 - (Date.now() - (game.thinkStart || 0));
+    if (wait > 0) { setTimeout(() => onAiMove(ev), wait); game.thinkStart = 0; return; }
+    game.thinking = false;
+    game.read = { value: m.value, exact: m.exact, depth: m.depth, base: game.score.ai - game.score.you, level: game.level };
+    play(m.flip, m.edge, 'ai');
+    render();
+  }
+  function undo() {
+    if (!game || game.thinking || game.ranked) return;
+    let i = game.history.length - 1;
+    while (i >= 0 && game.history[i].who !== 'you') i--;
+    if (i < 0) return;
+    const s = JSON.parse(game.history[i].snap);
+    game.history.length = i;
+    Object.assign(game, s); game.read = null; game.pending = -1; game.flashCap = 0;
+    render();
+  }
+
+  // ---- records (shared leaderboard; only when RECORD_URL is set) ----
+  async function api(body) {
+    const opt = body ? { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) } : undefined;
+    const r = await fetch(RECORD_URL + (body ? '' : '?t=' + Date.now()), opt);
+    return r.json();
+  }
+  function showSummary(d) {
+    if (!d || !d.stats) return;
+    const put = (k, idRate, idN) => {
+      const s = d.stats[k] || { games: 0, wins: 0, draws: 0 };
+      $(idRate).innerHTML = s.games ? `${(100 * s.wins / s.games).toFixed(1)}<small>%</small>` : '–';
+      $(idN).textContent = s.games ? `${s.games}局中 ${s.wins}勝` + (s.draws ? `・${s.draws}分` : '') : 'まだ挑戦者がいません';
+    };
+    put('flip', 'rateFlip', 'nFlip'); put('noflip', 'rateNo', 'nNo');
+    const ol = $('champs'); ol.textContent = '';
+    const list = d.champions || [];
+    if (!list.length) { const li = document.createElement('li'); const sp = document.createElement('span'); sp.className = 'empty'; sp.textContent = 'まだ誰も勝っていません。最初の1人になろう。'; li.appendChild(sp); ol.appendChild(li); return; }
+    list.forEach((c, k) => {
+      const li = document.createElement('li');
+      const no = document.createElement('span'); no.className = 'no'; no.textContent = (list.length - k) + '.';
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = c.name;
+      const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = `${c.mode === 'noflip' ? '裏返しなし' : '裏返しあり'}　${c.you}対${c.ai}　${c.date}`;
+      li.append(no, nm, meta); ol.appendChild(li);
+    });
+  }
+  async function loadSummary() {
+    if (!RECORD_URL) return;
+    try { showSummary(await api()); } catch (_) { $('champs').innerHTML = '<li><span class="empty">記録を読み込めませんでした。</span></li>'; }
+  }
+  async function onGameOver() {
+    if (!game.ranked) return;
+    const y = game.score.you, a = game.score.ai;
+    const result = y > a ? 'win' : y < a ? 'lose' : 'draw';
+    const g = game;
+    try {
+      showSummary(await api({ type: 'result', gameId: g.gameId, mode: g.noFlip ? 'noflip' : 'flip', first: g.firstWho, you: y, ai: a, result, board: g.board0.join(''), moves: JSON.stringify(g.moves) }));
+    } catch (_) {}
+    if (result === 'win' && game === g) { $('entry').hidden = false; $('entryMsg').textContent = ''; setTimeout(() => $('entryName').focus(), 50); }
+  }
+  $('entry').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const name = $('entryName').value.trim();
+    if (!name) { $('entryMsg').textContent = '名前を入れてください。'; return; }
+    $('entryBtn').disabled = true; $('entryMsg').textContent = '登録しています…';
+    try {
+      const d = await api({ type: 'champion', gameId: game.gameId, name });
+      if (d.ok) { showSummary(d); $('entryMsg').textContent = '殿堂に登録しました。おめでとうございます！'; $('entryName').disabled = true; }
+      else { $('entryMsg').textContent = d.error === 'already' ? 'この対局はもう登録済みです。' : '登録できませんでした。時間をおいてもう一度試してください。'; $('entryBtn').disabled = false; }
+    } catch (_) { $('entryMsg').textContent = '通信できませんでした。もう一度試してください。'; $('entryBtn').disabled = false; }
+  });
+  if (RECORD_URL) { $('hall').hidden = false; loadSummary(); }
+
+  // ---- sound ----
+  let actx = null;
+  function audio() {
+    if (!$('sound').checked) return null;
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+    } catch (_) { return null; }
+    return actx;
+  }
+  document.addEventListener('pointerdown', () => audio(), { capture: true });
+  function tone(ctx, t, freq, dur, type, gain, freqEnd) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function tick(ctx, t, bright) {
+    // short filtered noise: a pen stroke on paper
+    const len = Math.floor(ctx.sampleRate * 0.06), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = buf; f.type = 'bandpass'; f.frequency.value = bright; f.Q.value = 1.2; g.gain.value = 0.5;
+    src.connect(f).connect(g).connect(ctx.destination); src.start(t);
+  }
+  function sound(who, flip, e, gain) {
+    const ctx = audio(); if (!ctx) return;
+    const t = ctx.currentTime + 0.01;
+    let at = t;
+    if (flip >= 0) { tone(ctx, at, 280, 0.14, 'triangle', 0.18, 760); at += 0.13; }
+    if (e >= 0) { tick(ctx, at, who === 'you' ? 2600 : 1700); tone(ctx, at, who === 'you' ? 660 : 440, 0.09, 'sine', 0.22); }
+    if (gain > 0) {
+      const base = who === 'you' ? 523.25 : 392.0; const steps = [1, 1.25, 1.5, 2, 2.5];
+      const n = Math.min(5, 2 + Math.floor(gain / 6));
+      for (let k = 0; k < n; k++) tone(ctx, at + 0.09 + k * 0.075, base * steps[k], 0.35, 'sine', 0.16);
+    }
+    if (game.over) {
+      const win = game.score.you > game.score.ai, draw = game.score.you === game.score.ai;
+      const seq = draw ? [440, 440] : win ? [523.25, 659.25, 783.99, 1046.5] : [392, 349.23, 311.13, 261.63];
+      seq.forEach((f, k) => tone(ctx, at + 0.6 + k * 0.16, f, 0.45, 'triangle', 0.18));
+    }
+  }
+
+  // ---- render ----
+  function render() {
+    const st = game.st;
+    const myTurn = !game.over && game.turn === 'you' && !game.thinking;
+    let F = st.F, Uv = st.U, flipCap = 0, flipGain = 0;
+    if (myTurn && game.pending >= 0) {
+      const pv = flipPreview(st, game.pending);
+      F = pv.F; Uv = pv.U; flipCap = pv.cap; flipGain = pv.gain;
+    }
+    for (let e = 0; e < 40; e++) {
+      const o = game.edgeOwner[e];
+      const legal = edgeLegal({ Hm: st.Hm, Vm: st.Vm, U: Uv }, e);
+      let cls = 'edge';
+      if (o) cls += ' drawn ' + o; else if (!legal) cls += ' dead';
+      if (e === game.last && o) cls += ' last';
+      edgeLine[e].setAttribute('class', cls);
+      edgeHit[e].style.display = legal ? '' : 'none';
+    }
+    for (let i = 0; i < 25; i++) {
+      const black = (F >>> i) & 1;
+      const o = game.cellOwner[i];
+      tile[i].setAttribute('class', 'tile ' + (black ? 'b' : 'w'));
+      num[i].setAttribute('class', 'num ' + (black ? 'b' : 'w'));
+      num[i].textContent = BASE[i] + black;
+      const oo = o || ((flipCap >>> i) & 1 ? 'you' : null);
+      tint[i].setAttribute('class', 'tint' + (oo && !black ? ' ' + oo : ''));
+      const pend = myTurn && i === game.pending;
+      ring[i].setAttribute('class', 'ring' + (pend ? ' pending' : oo ? ' ' + oo : ''));
+      owner[i].setAttribute('class', 'owner' + (o ? ' ' + o : ''));
+      owner[i].textContent = o === 'you' ? 'あなた' : o === 'ai' ? 'AI' : '';
+      fmark[i].textContent = pend ? '裏返す' : (!o && i === game.lastFlip && game.history.length ? '↻' : '');
+      chit[i].style.display = !game.noFlip && ((st.U >>> i) & 1) ? '' : 'none';
+      halo[i].setAttribute('class', 'halo' + (i === game.lastFlip && game.lastWho && !pend ? ' ' + game.lastWho : ''));
+      if ((game.flashCap >>> i) & 1) { tint[i].classList.remove('flash'); void tint[i].getBoundingClientRect(); tint[i].classList.add('flash'); }
+    }
+    game.flashCap = 0;
+    $('ptYou').textContent = game.score.you; $('ptAi').textContent = game.score.ai;
+    $('fsYou').textContent = game.score.you; $('fsAi').textContent = game.score.ai;
+    $('scYou').classList.toggle('turn', !game.over && game.turn === 'you');
+    $('scAi').classList.toggle('turn', !game.over && game.turn === 'ai');
+    svg.classList.toggle('board-off', !myTurn);
+    let html, plain;
+    if (game.over) {
+      const y = game.score.you, a = game.score.ai;
+      const w = y > a ? 'you' : y < a ? 'ai' : '';
+      plain = w === 'you' ? 'あなたの勝ち' : w === 'ai' ? 'AIの勝ち' : '引き分け';
+      html = `<span class="result ${w}">${plain}　${y} 対 ${a}</span>`;
+      plain += `（${y} 対 ${a}）`;
+    } else if (game.thinking) {
+      plain = 'AIが考えています…'; html = plain;
+    } else {
+      plain = game.pending >= 0 ? (Uv === 0 ? '「裏返して手番を終える」で確定します。' : '引く辺をクリックすると手番が確定します。') : (game.noFlip ? '引きたい辺をクリック。' : '裏返すマスを選ぶか（任意）、そのまま引く辺をクリック。');
+      html = '<b>あなたの番</b>　' + plain;
+    }
+    $('status').innerHTML = html; $('fsStatus').textContent = (game.lastText ? game.lastText + '　' : '') + plain;
+    $('flipbar').hidden = !(myTurn && game.pending >= 0);
+    if (myTurn && game.pending >= 0) { const v = BASE[game.pending] + ((st.F >>> game.pending) & 1); const nv = BASE[game.pending] + (((st.F >>> game.pending) & 1) ^ 1); $('flipchip').textContent = `${posName(game.pending)}を裏返す：${v} → ${nv}` + (flipGain ? `（この区画を取って +${flipGain}点）` : ''); }
+    $('flipEnd').hidden = !(myTurn && game.pending >= 0 && Uv === 0);
+    $('lastmove').textContent = game.lastText;
+    const rd = $('read');
+    rd.hidden = !$('showRead').checked;
+    const lvName = { normal: '普通', strong: 'まあまあ強い', max: '最強' }[game.level];
+    if (game.read && game.read.level === 'max') {
+      const fin = game.read.base + game.read.value;
+      const lead = fin > 0 ? `AIが${fin}点差で勝つ` : fin < 0 ? `あなたが${-fin}点差で勝つ` : '引き分け';
+      rd.textContent = game.read.exact ? `AI（${lvName}）の読み：最後まで読み切りました。お互い最善なら${lead}。` : `AI（${lvName}）の読み：${game.read.depth}手先まで探索。`;
+    } else rd.textContent = `AIの強さ：${lvName}`;
+    const canUndo = !game.thinking && !game.ranked && game.history.some(h => h.who === 'you');
+    $('undoBtn').disabled = !canUndo; $('fsUndo').disabled = !canUndo;
+  }
+
+  // ---- full screen ----
+  function enterFs() {
+    document.body.classList.add('focus');
+    const p = document.documentElement.requestFullscreen ? document.documentElement.requestFullscreen() : null;
+    if (p && p.catch) p.catch(() => {});
+  }
+  function exitFs() {
+    document.body.classList.remove('focus');
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  }
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.body.classList.remove('focus'); });
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && document.body.classList.contains('focus')) exitFs(); });
+
+  $('newBtn').addEventListener('click', newGame);
+  $('modeFlip').addEventListener('click', () => setMode('flip'));
+  $('modeNoFlip').addEventListener('click', () => setMode('noflip'));
+  $('shuffleBtn').addEventListener('click', () => { if ($('lyStd').checked) $('lyVary').checked = true; newGame(); });
+  $('undoBtn').addEventListener('click', undo);
+  $('fsUndo').addEventListener('click', undo);
+  $('fsBtn').addEventListener('click', enterFs);
+  $('fsExit').addEventListener('click', exitFs);
+  $('flipEnd').addEventListener('click', () => humanMove(-1));
+  $('flipCancel').addEventListener('click', () => { if (game) { game.pending = -1; render(); } });
+  $('showRead').addEventListener('change', render);
+  newGame();
+})();
+</script>
+
+</body>
+</html>
