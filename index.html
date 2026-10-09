@@ -158,7 +158,7 @@ details ul { padding-left: 1.2em; margin: 6px 0 0; }
 .flipbar[hidden] { display: none; }
 .chip { border: 1.5px dashed var(--pending); border-radius: 999px; padding: 2px 10px; }
 
-/* site bar (same on every game of やたら楽しいゲーム部屋) */
+/* site bar (same on every game of 異次元のボードゲーム部屋) */
 .sitebar { display: flex; align-items: center; gap: 12px; height: 48px; margin: -24px -16px 22px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--sheet); }
 .sitebar a { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); text-decoration: none; font-weight: 700; font-size: 14px; min-width: 0; }
 .sitebar a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -166,6 +166,8 @@ details ul { padding-left: 1.2em; margin: 6px 0 0; }
 .sitebar a:focus-visible { outline: 2px solid var(--you); outline-offset: 3px; border-radius: 6px; }
 .sitebar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .sitebar small { font-weight: 500; color: var(--ink-soft); }
+/* the English site name is long: on phones it takes two short lines instead of being cut off */
+@media (max-width: 520px) { html[lang="en"] .sitebar a > span { white-space: normal; line-height: 1.2; font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; } html[lang="en"] .sitebar small { display: none; } }
 body.focus .sitebar { display: none; }
 body.focus .hall { display: none !important; }
 .sitebar .lang-tool { margin-left: auto; flex: none; height: 32px; width: auto; padding: 0 11px; font-size: 12.5px; font-weight: 700; line-height: 1; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--sheet); color: var(--ink); }
@@ -194,7 +196,7 @@ body.focus svg#board { max-width: none; width: min(100%, calc(100dvh - 96px)); h
 </style>
 
 <nav class="sitebar" aria-label="サイト" data-en-attr="aria-label:Site">
-  <a href="https://yataramath.github.io/" target="_top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg><span data-en-html="Yatara Game Room <small>all games</small>">やたら楽しいゲーム部屋 <small>ゲーム一覧</small></span></a>
+  <a href="https://yataramath.github.io/" target="_top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg><span data-en-html="Board Games from Another Dimension <small>all games</small>">異次元のボードゲーム部屋 <small>ゲーム一覧</small></span></a>
   <button type="button" class="tool lang-tool" id="langBtn" data-i18n-skip lang="en" aria-label="Switch to English" title="Switch to English">EN</button>
 </nav>
 
